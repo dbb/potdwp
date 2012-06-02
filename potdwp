@@ -1,0 +1,31 @@
+#!/bin/sh
+
+local_dir=~/Pictures/potd
+
+if [ ! -d $local_dir ]; then
+    mkdir -p $local_dir
+fi
+
+page_url=$( curl -sL https://commons.wikimedia.org/w/api.php\?action\=featuredfeed\&feed\=potd\&feedformat\=atom\&language\=en | grep -m1 'FeedItem' | perl -lpe 's/<.*?>//g' )
+
+echo "page url: $page_url\n\n"
+
+image_file=$( curl -sL $page_url | grep -m1 'File:' | perl -lpe 's/.*File://; s/".*//' )
+
+echo "image filename $image_file\n\n"
+
+image_prefix=$( curl -s https://commons.wikimedia.org/wiki/File:"$image_file" | perl -ne 'if (m#(./..)/'"$image_file"'#) {print $1; exit}' )
+
+image_url="https://upload.wikimedia.org/wikipedia/commons/${image_prefix}/${image_file}"
+
+cd $local_dir
+curl -LO $image_url
+
+if [ ! -f ${local_dir}/${image_file} ]; then
+    echo "Failed to download file"
+    exit 1
+fi
+
+# gconftool --set '/desktop/gnome/background/picture_filename' --type string "${local_dir}/${image_file}'
+# gsettings set org.gnome.desktop.background picture-uri "file://${local_dir}/${image_file}
+
